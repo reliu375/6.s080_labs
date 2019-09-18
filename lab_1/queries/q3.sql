@@ -1,2 +1,6 @@
 --replace this with your query
-SELECT 1;
+SELECT CMTE_ID, CMTE_NM, TTL_RECEIPTS
+FROM pac_summary
+WHERE CMTE_TP = "O" AND TTL_RECEIPTS != ""
+ORDER BY TTL_RECEIPTS DESC
+LIMIT 10;
