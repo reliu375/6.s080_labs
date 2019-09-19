@@ -6,6 +6,8 @@ where CAND_OFFICE_ST <> indiv_contrib.STATE
 and CAND_ELECTION_YR = 2016
 and CAND_OFFICE = 'S'
 and CAND_STATUS in ('C', 'N')
+and ENTITY_TP = "IND"
 group by candidate.CAND_ID
 order by TOTAL desc
 limit 5;
+
