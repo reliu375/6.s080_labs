@@ -21,7 +21,7 @@ def Q7Pandas():
     wmbr = pd.read_csv('data/wmbr-11-awk.txt', delimiter = '|')
     condition = wmbr.Song.str.contains("WMBR") | wmbr.Album.str.contains("WMBR")
     condition = condition | wmbr.Song.str.contains("Wmbr") | wmbr.Album.str.contains("Wmbr")
-    wmbr_filtered = wmbr[condition]
+    wmbr_filtered = wmbr[condition].sort_values("Artist")
 
     return wmbr_filtered["Artist"].unique()
 
@@ -29,13 +29,13 @@ def Q8Pandas():
     wmbr = pd.read_csv('data/wmbr-11-awk.txt', delimiter = '|')
     condition = wmbr.Album != ""
     condition = condition & (wmbr.Album.str.contains("Stranger Things"))
-    print(condition)
+
     wmbr_filtered = wmbr[condition]
 
     fields = ["DJ", "Song"]
-    res = wmbr_filtered[fields].groupby(fields[0]).nunique()
+    res = wmbr_filtered[fields].groupby(fields[0]).nunique().rename({"Song": "Freq"}, axis = 'columns')
 
-    return res
+    return res["Freq"].sort_values(ascending=False)
 
 def Q9Pandas():
     wmbr = pd.read_csv('data/wmbr-awk.txt', delimiter = '|')
@@ -58,7 +58,7 @@ def Q9Pandas():
 
     joined["ratio"] = joined['Eilish']/joined["Total"] 
     
-    return joined
+    return joined.sort_index()
 
 def Q10Pandas():
     lizzo = pd.read_csv('data/lizzo_awk_final.txt', delimiter = '|')
@@ -93,11 +93,8 @@ def Q11Pandas():
 
     return top_filtered[fields].sort_values("danceability", ascending = False)
 
-print(Q10Pandas())
+print(Q11Pandas())
 
-
-
-print(other())
 
 # wmbr['Year'] = pd.to_datetime(wmbr['Date']).dt.year
 # noDoubles = wmbr.groupby('Date').min()

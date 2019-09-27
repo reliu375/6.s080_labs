@@ -41,7 +41,8 @@ awk 'BEGIN{ print "country,year,rank"; getline; getline;}
 			print country","years4[ix]",4"
 		}
 	}
-		
+	
+	# Skip the total rank line and the next beginning line
 	getline;
 	getline;
 
