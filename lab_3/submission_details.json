@@ -1,5 +1,5 @@
 {
-  "submission_url" : "<submission_url_posted_on_piazza>",
-  "group_secret" : "<your_group_secret>",
-  "team_name" : "<your_team_name>"
+  "submission_url" : "http://128.52.139.133:8166/submit",
+  "group_secret" : "9PGxLEyn96ppMzceyyF8",
+  "team_name" : "Yikes"
 }
