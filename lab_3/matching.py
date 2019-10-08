@@ -26,17 +26,13 @@ def run(directory):
     r2["shortdescr"] = r2["proddescrshort"]
     fields = ["custom_id", "brand", "title", "price", "shortdescr", "modelno", "shipweight", "dimensions"] # , "price", "proddescrshort", "dimensions"]
     r1, r2 = r1[fields + ["groupname", "longdescr"]], r2[fields + ["category1", "proddescrlong", "Weight", "listprice"]]
-    # df = pd.concat([r1, r2])
-    all_brands = set(list(partition(r1, "brand")) + list(partition(r2, "brand")))
-    all_brands = {a for a in all_brands if str(a) != 'nan'}
-    print(len(all_brands))
-    # pdb.set_trace()
+
     col1, col2 = [], []
 
     companyMatch = {}
     for br1 in r1['brand'].sort_values().unique():
         for br2 in r2['brand'].unique():
-            if jaccard(br1, br2) >= 1/5:
+            if jaccard(br1, br2) >= 1/10:
                 if br1 in companyMatch:
                     companyMatch[br1].append(br2)
                 else:
@@ -46,17 +42,18 @@ def run(directory):
         # pdb.set_trace()
         for ix, row1 in r1[r1.brand == brand].iterrows():
             for jx, row2 in r2[r2.brand.isin(companyMatch[brand])].iterrows():
-                c1 = jaccard(row1["title"], row2["title"]) >= 0.6
-                c2 = jaccard(row1['shortdescr'], row2['shortdescr']) >= 0.6
+                c1 = jaccard(row1["title"], row2["title"])
+                c2 = jaccard(row1['shortdescr'], row2['shortdescr'])
                 c3 = edit_distance(row1["modelno"], row2["modelno"])
-                c4 = abs(row1['price'] - row2['price']) <= 5 or abs(row1['price'] - row2['listprice']) <= 5
-                # c4 = jaccard(row1['longdescr'], row2['proddescrlong']) >= 0.8
-                if c1 or c2 or c3 == 0:
+                c4 = abs(row1['price'] - row2['price']) <= 0.5 or abs(row1['price'] - row2['listprice']) <= 0.5
+                c5 = edit_distance(row1['dimensions'], row2['dimensions'])
+                c6 = abs(row1['shipweight'] - row2['Weight']) <= 1
+                if c1 >= 0.6 or c2 >= 0.6 or c3 == 0:
                     col1.append(row1["custom_id"])
                     col2.append(row2["custom_id"])
-                # elif (c1 or c2 or c3 <= 1) and c4:
-                #     col1.append(row1["custom_id"])
-                #     col2.append(row2["custom_id"])
+                elif (c1 >= 0.2 or c2 >= 0.2) and (c3 <= 1 and c4 and c6):
+                    col1.append(row1["custom_id"])
+                    col2.append(row2["custom_id"])
 
     matches = pd.DataFrame({"id1": col1, "id2": col2})
 
@@ -73,21 +70,18 @@ def train(directory):
     replace_title(r1, r2)
     replace_desc(r1, r2)
     replace_shipment(r1, r2)
+    replace_groupname(r1, r2)
 
     r2["shortdescr"] = r2["proddescrshort"]
     fields = ["custom_id", "brand", "title", "price", "shortdescr", "modelno", "shipweight", "dimensions"] # , "price", "proddescrshort", "dimensions"]
-    r1, r2 = r1[fields + ["groupname", "longdescr"]], r2[fields + ["category1", "proddescrlong", "Weight", "listprice"]]
-    # df = pd.concat([r1, r2])
-    all_brands = set(list(partition(r1, "brand")) + list(partition(r2, "brand")))
-    all_brands = {a for a in all_brands if str(a) != 'nan'}
-    print(len(all_brands))
-    # pdb.set_trace()
+    r1, r2 = r1[fields + ["groupname", "longdescr"]], r2[fields + ["category1", "proddescrlong", "Weight", "listprice", "pcategory1", "category2", "pcategory2"]]
+    
     col1, col2 = [], []
 
     companyMatch = {}
     for br1 in r1['brand'].sort_values().unique():
         for br2 in r2['brand'].unique():
-            if jaccard(br1, br2) >= 1/5:
+            if jaccard(br1, br2) >= 1/10:
                 if br1 in companyMatch:
                     companyMatch[br1].append(br2)
                 else:
@@ -97,15 +91,16 @@ def train(directory):
         # pdb.set_trace()
         for ix, row1 in r1[r1.brand == brand].iterrows():
             for jx, row2 in r2[r2.brand.isin(companyMatch[brand])].iterrows():
-                c1 = jaccard(row1["title"], row2["title"]) >= 0.6
-                c2 = jaccard(row1['shortdescr'], row2['shortdescr']) >= 0.6
+                c1 = jaccard(row1["title"], row2["title"])
+                c2 = jaccard(row1['shortdescr'], row2['shortdescr'])
                 c3 = edit_distance(row1["modelno"], row2["modelno"])
-                c4 = abs(row1['price'] - row2['price']) <= 5 or abs(row1['price'] - row2['listprice']) <= 5
-                # c4 = jaccard(row1['longdescr'], row2['proddescrlong']) >= 0.8
-                if c1 or c2 or c3 == 0:
+                c4 = abs(row1['price'] - row2['price']) <= 0.5 or abs(row1['price'] - row2['listprice']) <= 0.5
+                c5 = row1['groupname'] == row2['category1']
+                c6 = abs(row1['shipweight'] - row2['Weight']) <= 1
+                if c1 >= 0.6 or c2 >= 0.6 or c3 == 0:
                     col1.append(row1["custom_id"])
                     col2.append(row2["custom_id"])
-                elif (c1 or c2 or c3 <= 1) and c4:
+                elif (c1 >= 0.2 or c2 >= 0.2) and (c3 <= 1 and c4 and c6):
                     col1.append(row1["custom_id"])
                     col2.append(row2["custom_id"])
 
@@ -132,6 +127,8 @@ def replace_brand(r1, r2):
     r2['brand'].replace('Royal Consumer', 'Royal', inplace=True)
     r1['brand'].replace('Rubbermaid Commercial', 'Rubbermaid', inplace=True)
     r2['brand'].replace('Rubbermaid Commercial', 'Rubbermaid', inplace=True)
+    r1['brand'].replace('Team ProMark', 'Team Pro Mark', inplace=True)
+    r2['brand'].replace('Team ProMark', 'Team Pro Mark', inplace=True)
 
     r1['brand'] = r1['brand'].str.lower()
     r2['brand'] = r2['brand'].str.lower()
@@ -160,6 +157,13 @@ def replace_shipment(r1, r2):
     r2[['Weight', 'Units']] = r2['shipweight'].str.split(' ', n=1, expand=True)
     r2['Weight'] = r2['Weight'].astype(float)
     r2.loc[r2['Units'] == 'ounces', 'Weight'] = r2.loc[r2['Units'] == 'ounces', 'Weight']/16
+
+def replace_groupname(r1, r2):
+    r1['groupname'] = r1['groupname'].str.replace('[^a-zA-Z0-9 ]', '').str.lower()
+    r2['category1'] = r2['category1'].str.replace('[^a-zA-Z0-9 ]', '').str.lower()
+    r2['category2'] = r2['category2'].str.replace('[^a-zA-Z0-9 ]', '').str.lower()
+    r2['pcategory1'] = r2['pcategory1'].str.replace('[^a-zA-Z0-9 ]', '').str.lower()
+    r2['pcategory2'] = r2['pcategory2'].str.replace('[^a-zA-Z0-9 ]', '').str.lower()
 
 def partition(df, field):
     return pd.unique(df[field])
