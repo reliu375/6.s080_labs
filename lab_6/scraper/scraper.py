@@ -35,7 +35,7 @@ def download_html(url, out_filename):
         return
 
     os.makedirs(os.path.dirname(out_filename), exist_ok=True)
-    with open(out_filename, 'wb') as f:
+    with open(out_filename, 'wb', encoding='utf-8') as f:
         f.write(response.content)
         print('HTML contents saved under %s' % out_filename)
 
@@ -43,7 +43,7 @@ def download_html(url, out_filename):
 # Scrapes list of <category,regex> entries from previously downloaded HTML
 # content, and enqueues them for later processing.
 def scrape_html(out_queue, category, html_filename):
-    with open(html_filename, 'r') as f:
+    with open(html_filename, 'r', encoding='utf-8') as f:
         contents = f.read()
         tree = html.fromstring(contents)
 
@@ -58,6 +58,8 @@ def scrape_html(out_queue, category, html_filename):
 
         # YOUR CODE GOES HERE.
         # Add rows to out queue.
+        for row in csv_rows:
+            out_queue.put(row)
 
 
 # Cleans scraped regex for saving onto output csv file.
@@ -91,9 +93,12 @@ def to_csv_row(category, scraped_regex):
 # Each worker will scrape regexes from local HTML files in parallel.
 def worker(task_queue, out_queue):
     try:
-      # YOUR CODE GOES HERE.
-      # Dequeue tuples of (category,html_filename) from the task queue,
-      # and use these as input for scrape_html.
+        # YOUR CODE GOES HERE.
+        # Dequeue tuples of (category,html_filename) from the task queue,
+        # and use these as input for scrape_html.
+        while True:
+            (category, html_filename) = task_queue.get()
+            scrape_html(out_queue, category, html_filename)
     except queue.Empty:
         log('Done scraping!')
 
@@ -105,6 +110,8 @@ def main_task(urls_df, output_file, n_workers, redownload_html):
     # 2. Enqueue tuples of (category, html_filename) onto the task queue you
     #    created.
     # 3. Create your workers using Process and start them up.
+    task_queue = multiprocessing.Queue()
+    out_queue = multiprocessing.Queue()
 
     # NOTE: You need not enable this flag. This is here just so that you see
     # how the HTML files included under downloaded_html/ were originally
@@ -131,15 +138,22 @@ def main_task(urls_df, output_file, n_workers, redownload_html):
         category = f.split('/')[1]
         # YOUR CODE GOES HERE
         # Enqueue tuples of (category, html filename) onto the task queue.
+        task_queue.put((category, f))
 
+    startTime = time.perf_counter()
     # YOUR CODE GOES HERE
     # Start up the workers.
+    workers = []
+    for i in range(n_workers):
+        p = multiprocessing.Process(target=worker, args=(task_queue, out_queue))
+        p.start()
+        workers.append(p)
 
     csv_rows = []
     try:
         while True:
             # https://bugs.python.org/issue20147
-            csv_rows += out_queue.get(block=True, timeout=1)
+            csv_rows.append(out_queue.get(block=True, timeout=1))
     except queue.Empty:
         log('Done!')
 
@@ -151,6 +165,11 @@ def main_task(urls_df, output_file, n_workers, redownload_html):
             quoting=csv.QUOTE_ALL)
         writer.writeheader()
         writer.writerows(csv_rows)
+
+    for p in workers:
+        p.terminate()
+    
+    print("Runtime: %s (ms)" % ((time.perf_counter() - startTime)*1000))
 
 
 if __name__ == "__main__":
